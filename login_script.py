@@ -30,7 +30,13 @@ async def login(username, password, panelnum):
             browser = await launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
 
         page = await browser.newPage()
-        url = f'https://panel{panelnum}.serv00.com/login/?next=/'
+
+        # 判断panelnum的值，选择相应的URL
+        if panelnum == "ct8":
+            url = f'https://panel.ct8.pl/login/?next=/'
+        else:
+            url = f'https://panel{panelnum}.serv00.com/login/?next=/'
+
         await page.goto(url)
 
         username_input = await page.querySelector('#id_username')
@@ -56,7 +62,12 @@ async def login(username, password, panelnum):
         return is_logged_in
 
     except Exception as e:
-        print(f'serv00账号 {username} 登录时出现错误: {e}')
+        if panelnum == "ct8":
+            error_message = f'ct8账号 {username} 登录时出现错误: {e}'
+        else:
+            error_message = f'serv00账号 {username} 登录时出现错误: {e}'
+
+        print(error_message)
         return False
 
     finally:
@@ -78,33 +89,29 @@ async def main():
         if is_logged_in:
             now_utc = format_to_iso(datetime.utcnow())
             now_beijing = format_to_iso(datetime.utcnow() + timedelta(hours=8))
-            success_message = f'serv00账号 {username} 于北京时间 {now_beijing}（UTC时间 {now_utc}）登录成功！'
+
+            if panelnum == "ct8":
+                success_message = f'ct8账号 {username} 于北京时间 {now_beijing}（UTC时间 {now_utc}）登录成功！'
+            else:
+                success_message = f'serv00账号 {username} 于北京时间 {now_beijing}（UTC时间 {now_utc}）登录成功！'
+            
             print(success_message)
             send_telegram_message(success_message)
         else:
-            print(f'serv00账号 {username} 登录失败，请检查serv00账号和密码是否正确。')
+            # 错误信息已经在login函数中处理
+            pass
 
         delay = random.randint(1000, 8000)
         await delay_time(delay)
 
-    print('所有serv00账号登录完成！')
+    print('所有账号登录完成！')
 
 # 发送Telegram消息
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         'chat_id': TELEGRAM_CHAT_ID,
-        'text': message,
-        'reply_markup': {
-            'inline_keyboard': [
-                [
-                    {
-                        'text': '问题反馈❓',
-                        'url': 'https://t.me/yxjsjl'
-                    }
-                ]
-            ]
-        }
+        'text': message
     }
     headers = {
         'Content-Type': 'application/json'
